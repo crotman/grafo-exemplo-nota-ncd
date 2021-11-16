@@ -16,33 +16,43 @@ paleta_epe <- c(
 bds <- tibble(
     nome = str_glue("BD{1:4}"),
     x_pos = seq(from = 0.1, to = 0.9, length.out = 4 ),
-    y_pos = 0.25,
+    y_pos = 0.1,
     tipo = "BD"
 )
 
 analises <- tibble(
     nome = str_glue("A{1:4}"),
     x_pos = seq(from = 0.1, to = 0.9, length.out = 4 ),
-    y_pos = 0.75,
+    y_pos = 0.9,
     tipo = "Analise"
 )
 
 
-etls <- crossing(bds %>% select(bd = nome), analises %>% select(analises = nome)) %>% 
+etls_bd <- crossing(bds %>% select(bd = nome)) %>% 
     mutate(
-        nome = str_glue("{bd}->{analises}"),
+        nome = str_glue("{bd}->BD"),
         tipo = "Código"
     ) %>% 
     mutate(
-        x_pos = seq(from = 0, to = 1, length.out = 16 ),
-        y_pos = 0.5
+        x_pos = seq(from = 0, to = 1, length.out = 4 ),
+        y_pos = 0.35
     )
 
 
+bd <- tibble(
+    tibble(
+        nome = "BD",
+        tipo = "BD",
+        x_pos = 0.5,
+        y_pos = 0.65
+    )
+)
+    
+
 bd_to_code <- crossing(
     bds %>% select(from = nome),
-    etls %>% select(to = nome),
-) %>% 
+    etls_bd %>% select(to = nome),
+ ) %>% 
     filter(
         str_detect(to, from),
     ) %>% 
@@ -50,25 +60,32 @@ bd_to_code <- crossing(
         from, to
     ) %>% 
     mutate(
-        cor = NA
+        cor = "sim"
     )
 
+
+code_to_bd <- bd_to_code %>% select(from = to) %>% 
+    mutate(
+        to = "BD"
+    ) %>% 
+    mutate(
+        cor = "sim"
+    )
+
+    
+
 code_to_analise <- crossing(
-    etls %>% select(from = nome),
     analises %>% select(to = nome),
 ) %>% 
-    filter(
-        str_detect(from, to),
+    mutate(
+        from = "BD"
     ) %>% 
     select(
         from, to
     ) %>% 
     mutate(
-        cor = to
+        cor = "sim"
     )
-
-
-
 
 
 
@@ -76,13 +93,16 @@ grafo_com_nos <- create_empty(n = 0, directed = TRUE) %>%
     activate("nodes") %>% 
     bind_nodes(
         bds,
-        etls,
+        etls_bd %>% select(-bd),
+        bd ,
         analises
     ) %>% 
     bind_edges(
         bd_to_code
     ) %>% 
     bind_edges(
+        bd_to_code %>% mutate(cor = NA),
+        code_to_bd,
         code_to_analise
     )
 
@@ -123,11 +143,9 @@ ggraph(
     scale_color_discrete(
         type = paleta_epe
     ) +
-    scale_edge_color_discrete(
-        h = c(40, 320),
-        c = 70,
-        l = 50,
-        na.value = "darkgray"
+    scale_edge_color_manual(
+        values = "darkgray",
+        na.value = "white"
     ) +
     scale_fill_discrete(
         type = paleta_epe
